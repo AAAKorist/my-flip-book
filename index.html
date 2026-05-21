@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>My Digital Library</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- The Header / Website Name -->
+    <header>
+        <h1>📖 The Alexandria Archive</h1>
+        <p class="tagline">Read books in realistic two-page spreads.</p>
+    </header>
+
+    <!-- The Main Bookshelf (Front Page) -->
+    <main>
+        <div class="bookshelf">
+            <!-- BOOK 1 -->
+            <div class="book-card" data-pdf="assets/pdfs/book1.pdf" data-title="The Silent Garden">
+                <img src="assets/covers/book1.jpg" alt="Cover of The Silent Garden">
+                <h3>The Silent Garden</h3>
+                <p class="author">By J. Peterson</p>
+            </div>
+
+            <!-- BOOK 2 -->
+            <div class="book-card" data-pdf="assets/pdfs/book2.pdf" data-title="Code & Coffee">
+                <img src="assets/covers/book2.jpg" alt="Cover of Code & Coffee">
+                <h3>Code & Coffee</h3>
+                <p class="author">By A. Developer</p>
+            </div>
+
+            <!-- You can add more books here by copying the div above -->
+        </div>
+    </main>
+
+    <!-- Footer with Contact Info & Notes for Audience -->
+    <footer>
+        <div class="contact">
+            <p>📧 <strong>Contact Me:</strong> author@mywebsite.com</p>
+            <p>🐦 <strong>Social:</strong> @myname on Twitter</p>
+        </div>
+        <div class="notes">
+            <p>📝 <strong>Note for Readers:</strong> These are preview drafts. For the best experience, use a laptop or tablet. Click the arrows to flip pages.</p>
+        </div>
+        <p class="copyright">© 2025 My Personal Library</p>
+    </footer>
+
+    <!-- The Modal (Popup) for Reading the Book -->
+    <div id="reader-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="book-title">Book Title</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="book-viewer">
+                <!-- Left Page (Canvas) -->
+                <div class="page-container">
+                    <canvas id="left-page-canvas"></canvas>
+                </div>
+                <!-- Right Page (Canvas) -->
+                <div class="page-container">
+                    <canvas id="right-page-canvas"></canvas>
+                </div>
+            </div>
+            <div class="navigation">
+                <button id="prev-button" disabled>◀ Previous Spread</button>
+                <span id="page-info">Page 0 of 0</span>
+                <button id="next-button">Next Spread ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import our scripts -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
