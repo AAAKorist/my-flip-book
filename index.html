@@ -3,35 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>My Digital Library</title>
+    <title>Strawberry Library | Sweet Reads</title>
+    
+    <!-- Google Fonts - Sweet & Elegant -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Quicksand:wght@300;400;600;700&family=Playfair+Display:wght@400;600;900&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <!-- The Header / Website Name -->
     <header>
-        <h1>📖 霸兔饲养基地</h1>
-        <p class="tagline">Read books in realistic two-page spreads.</p>
+        <div class="strawberry-decoration">
+            <i class="fas fa-seedling"></i>
+            <i class="fas fa-strawberry"></i>
+            <i class="fas fa-heart"></i>
+        </div>
+        <h1>Sweet Strawberry<span>Reads</span></h1>
+        <p class="tagline">✦ juicy stories, ripe for reading ✦</p>
+        <div class="strawberry-decoration">
+            <i class="fas fa-strawberry"></i>
+            <i class="fas fa-heart"></i>
+            <i class="fas fa-seedling"></i>
+        </div>
     </header>
 
     <!-- The Main Bookshelf (Front Page) -->
     <main>
+        <div class="flavor-tags">
+            <span class="flavor">DESSERT</span>
+            <span class="flavor">DECADENT</span>
+            <span class="flavor">AROMATIC</span>
+            <span class="flavor">REFRESHING</span>
+            <span class="flavor">STRAWBERRY</span>
+        </div>
+        
         <div class="bookshelf">
             <!-- BOOK 1 -->
             <div class="book-card" data-pdf="assets/pdfs/book1.pdf" data-title="The Silent Garden">
+                <div class="berry-badge"><i class="fas fa-strawberry"></i></div>
                 <img src="assets/covers/book1.jpg" alt="Cover of The Silent Garden">
                 <h3>The Silent Garden</h3>
-                <p class="author">By J. Peterson</p>
+                <p class="author">✦ By J. Peterson ✦</p>
+                <div class="flavor-notes">
+                    <span>sweet</span> • <span>romantic</span> • <span>juicy</span>
+                </div>
             </div>
 
             <!-- BOOK 2 -->
             <div class="book-card" data-pdf="assets/pdfs/book2.pdf" data-title="Code & Coffee">
+                <div class="berry-badge"><i class="fas fa-strawberry"></i></div>
                 <img src="assets/covers/book2.jpg" alt="Cover of Code & Coffee">
                 <h3>Code & Coffee</h3>
-                <p class="author">By A. Developer</p>
+                <p class="author">✦ By A. Developer ✦</p>
+                <div class="flavor-notes">
+                    <span>bold</span> • <span>rich</span> • <span>smooth</span>
+                </div>
             </div>
-
-            <!-- You can add more books here by copying the div above -->
+        </div>
+        
+        <div class="strawberry-quote">
+            <i class="fas fa-quote-left"></i>
+            <p>Each bite revealed a harmonious blend of flavors, where the creamy frosting seamlessly merged with the fresh, tangy taste of strawberries.</p>
+            <i class="fas fa-quote-right"></i>
         </div>
     </main>
 
