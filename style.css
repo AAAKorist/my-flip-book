@@ -1,6 +1,5 @@
 /* ============================================
-   STRAWBERRY DESSERT THEME
-   Sweet, soft, romantic aesthetic
+   霸兔饲养基地主题
    ============================================ */
 
 * {
@@ -17,7 +16,7 @@ body {
     min-height: 100vh;
 }
 
-/* HEADER - Sweet & Decorative */
+/* HEADER */
 header {
     text-align: center;
     padding: 3rem 1rem 2rem;
@@ -32,14 +31,6 @@ header h1 {
     color: #e84a5f;
     margin: 0.5rem 0;
     text-shadow: 2px 2px 8px rgba(232, 74, 95, 0.2);
-}
-
-header h1 span {
-    font-family: 'Playfair Display', serif;
-    font-weight: 900;
-    color: #ff8a5c;
-    display: inline-block;
-    transform: rotate(-2deg);
 }
 
 .tagline {
@@ -70,36 +61,6 @@ header h1 span {
     50% { transform: translateY(-5px); }
 }
 
-/* Flavor Tags - Like your reference */
-.flavor-tags {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-    padding: 2rem 1rem 1rem;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.flavor {
-    font-family: 'Playfair Display', serif;
-    font-weight: 900;
-    font-size: 0.9rem;
-    letter-spacing: 2px;
-    color: #ffaaa5;
-    background: white;
-    padding: 0.5rem 1.2rem;
-    border-radius: 30px;
-    box-shadow: 0 2px 8px rgba(232, 74, 95, 0.1);
-    transition: all 0.3s ease;
-}
-
-.flavor:hover {
-    transform: scale(1.05);
-    color: #e84a5f;
-    box-shadow: 0 4px 12px rgba(232, 74, 95, 0.2);
-}
-
 /* BOOKSHELF */
 .bookshelf {
     display: flex;
@@ -111,7 +72,7 @@ header h1 span {
     margin: 0 auto;
 }
 
-/* Book Cards - Dessert Style */
+/* Book Cards */
 .book-card {
     background: linear-gradient(135deg, #ffffff 0%, #fffaf8 100%);
     border-radius: 20px;
@@ -219,7 +180,7 @@ header h1 span {
     margin: 0 auto;
 }
 
-/* FOOTER - Sweet & Contact */
+/* FOOTER */
 footer {
     background: linear-gradient(135deg, #5c3d2e 0%, #4a2f23 100%);
     color: #ffd4ce;
@@ -254,7 +215,7 @@ footer strong {
 }
 
 /* ============================================
-   MODAL / READER (Keep your existing working code)
+   MODAL / READER
    ============================================ */
 .modal {
     display: none;
@@ -371,15 +332,47 @@ button:disabled {
     font-size: 0.9rem;
 }
 
-/* Responsive */
+/* ============================================
+   手机端单页模式样式
+   ============================================ */
 @media (max-width: 768px) {
     header h1 { font-size: 2.2rem; }
     .tagline { font-size: 1rem; }
-    .flavor-tags { gap: 0.5rem; }
-    .flavor { font-size: 0.7rem; padding: 0.3rem 0.8rem; }
     .book-card { width: 170px; }
     .strawberry-quote p { font-size: 0.9rem; }
-    .book-viewer { flex-direction: column; gap: 1rem; }
+    
+    /* 单页模式：上下排列 */
+    .book-viewer {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .page-container {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    /* 手机端隐藏左侧画布，只显示右侧 */
+    .mobile-single-page .page-container:first-child {
+        display: none;
+    }
+    
+    .mobile-single-page .page-container:last-child {
+        width: 100%;
+    }
+    
+    /* 手机端导航按钮样式 */
+    .navigation {
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        padding: 1rem;
+    }
+    
+    button {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
 }
 
 @media (max-width: 480px) {

@@ -1,4 +1,4 @@
-// Import Mozilla's PDF Library (only used for PDFs, falls back to images on mobile)
+// Import Mozilla's PDF Library
 import * as pdfjsLib from './pdf-libs/pdf.mjs';
 
 // Configure the worker
@@ -6,11 +6,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf-libs/pdf.worker.mjs';
 
 // --- Global Variables ---
 let currentPDF = null;
-let currentSpread = 0;
-let currentBookTitle = "";
-let currentBookMode = "pdf"; // "pdf" or "images"
+let currentSpread = 0;           // 双页模式：当前跨页
+let currentPageIndex = 0;        // 单页模式：当前页码（0开始）
 let totalPages = 0;
-let bookImageBasePath = ""; // e.g., "assets/images/book1/"
+let currentBookTitle = "";
+let currentBookMode = "pdf";     // "pdf" or "images"
+let bookImageBasePath = "";
+let isMobileDevice = false;
+let singlePageMode = false;       // 手机端单页模式
 
 // DOM Elements
 const modal = document.getElementById('reader-modal');
@@ -22,17 +25,28 @@ const modalTitle = document.getElementById('book-title');
 const leftCanvas = document.getElementById('left-page-canvas');
 const rightCanvas = document.getElementById('right-page-canvas');
 
-// --- 检测是否是手机端 ---
-function isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// --- 检测设备并设置模式 ---
+function checkDeviceAndSetMode() {
+    isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobileDevice) {
+        singlePageMode = true;
+        document.body.classList.add('mobile-single-page');
+        console.log("📱 手机端模式：单页显示");
+    } else {
+        singlePageMode = false;
+        document.body.classList.remove('mobile-single-page');
+        console.log("💻 电脑端模式：双页显示");
+    }
+    
+    return singlePageMode;
 }
 
-// --- 用图片渲染（手机端友好）---
+// --- 用图片渲染 ---
 async function renderPageFromImages(pageNum, canvasElement) {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
-            // 设置canvas尺寸
             canvasElement.width = img.width;
             canvasElement.height = img.height;
             const ctx = canvasElement.getContext('2d');
@@ -41,7 +55,6 @@ async function renderPageFromImages(pageNum, canvasElement) {
         };
         img.onerror = () => {
             console.error(`Failed to load image: ${bookImageBasePath}page${pageNum}.jpg`);
-            // 显示错误占位符
             const ctx = canvasElement.getContext('2d');
             canvasElement.width = 400;
             canvasElement.height = 500;
@@ -57,7 +70,7 @@ async function renderPageFromImages(pageNum, canvasElement) {
     });
 }
 
-// --- 用PDF渲染（电脑端）---
+// --- 用PDF渲染 ---
 async function renderPageFromPDF(pageNum, canvasElement) {
     try {
         const page = await currentPDF.getPage(pageNum);
@@ -90,16 +103,51 @@ async function renderPageFromPDF(pageNum, canvasElement) {
     }
 }
 
-// --- 渲染当前跨页 ---
-async function renderCurrentSpread() {
+// --- 绘制空白页 ---
+function drawBlankPage(canvas, text) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = 400;
+    canvas.height = 500;
+    ctx.fillStyle = '#eae6df';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#999';
+    ctx.font = 'italic 18px serif';
+    ctx.fillText(text, canvas.width/2 - 30, canvas.height/2);
+}
+
+// --- 单页模式渲染 ---
+async function renderSinglePage() {
+    const pageNum = currentPageIndex + 1;
+    
     if (currentBookMode === "images" && bookImageBasePath) {
-        await renderCurrentSpreadImages();
+        if (pageNum <= totalPages) {
+            await renderPageFromImages(pageNum, rightCanvas);
+            drawBlankPage(leftCanvas, "");
+        } else {
+            drawBlankPage(rightCanvas, "全书完");
+        }
+        
+        prevBtn.disabled = (currentPageIndex === 0);
+        nextBtn.disabled = (currentPageIndex + 1 >= totalPages);
+        pageInfoSpan.innerText = `第 ${pageNum} 页 / 共 ${totalPages} 页`;
+        
     } else if (currentPDF) {
-        await renderCurrentSpreadPDF();
+        const pdfTotalPages = currentPDF.numPages;
+        
+        if (pageNum <= pdfTotalPages) {
+            await renderPageFromPDF(pageNum, rightCanvas);
+            drawBlankPage(leftCanvas, "");
+        } else {
+            drawBlankPage(rightCanvas, "全书完");
+        }
+        
+        prevBtn.disabled = (currentPageIndex === 0);
+        nextBtn.disabled = (currentPageIndex + 1 >= pdfTotalPages);
+        pageInfoSpan.innerText = `第 ${pageNum} 页 / 共 ${pdfTotalPages} 页`;
     }
 }
 
-// 图片模式渲染
+// --- 双页模式渲染（图片）---
 async function renderCurrentSpreadImages() {
     const leftPageNum = (currentSpread * 2) + 1;
     const rightPageNum = leftPageNum + 1;
@@ -115,7 +163,6 @@ async function renderCurrentSpreadImages() {
         pageInfoSpan.innerText = `全书完`;
     }
     
-    // 渲染左右页
     if (leftPageNum <= totalPages) {
         await renderPageFromImages(leftPageNum, leftCanvas);
     } else {
@@ -129,7 +176,7 @@ async function renderCurrentSpreadImages() {
     }
 }
 
-// PDF模式渲染
+// --- 双页模式渲染（PDF）---
 async function renderCurrentSpreadPDF() {
     const leftPageNum = (currentSpread * 2) + 1;
     const rightPageNum = leftPageNum + 1;
@@ -159,39 +206,74 @@ async function renderCurrentSpreadPDF() {
     }
 }
 
-function drawBlankPage(canvas, text) {
-    const ctx = canvas.getContext('2d');
-    canvas.width = 400;
-    canvas.height = 500;
-    ctx.fillStyle = '#eae6df';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#999';
-    ctx.font = 'italic 18px serif';
-    ctx.fillText(text, canvas.width/2 - 30, canvas.height/2);
-}
-
-// --- 加载书籍（自动选择模式）---
-async function loadBook(pdfPath, title, imageFolderBase = null) {
-    // 如果提供了图片文件夹路径，优先用图片（手机端）
-    // 或者自动检测是手机端且提供了图片路径
-    const useImages = imageFolderBase && (isMobile() || imageFolderBase.forceImages);
-    
-    if (useImages || (imageFolderBase && imageFolderBase.path)) {
-        // 图片模式
-        const imagePath = typeof imageFolderBase === 'string' ? imageFolderBase : imageFolderBase.path;
-        await loadBookFromImages(title, imagePath);
+// --- 主渲染函数（自动选择模式）---
+async function renderCurrentSpread() {
+    if (singlePageMode) {
+        await renderSinglePage();
     } else {
-        // PDF模式（电脑端）
-        await loadBookFromPDF(pdfPath, title);
+        if (currentBookMode === "images" && bookImageBasePath) {
+            await renderCurrentSpreadImages();
+        } else if (currentPDF) {
+            await renderCurrentSpreadPDF();
+        }
     }
 }
 
-// 从图片加载书籍
+// --- 导航：下一页（单页模式）---
+function nextPage() {
+    if (singlePageMode) {
+        const maxPage = currentBookMode === "images" ? totalPages : (currentPDF ? currentPDF.numPages : 0);
+        if (currentPageIndex + 1 < maxPage) {
+            currentPageIndex++;
+            renderCurrentSpread();
+        }
+    }
+}
+
+// --- 导航：上一页（单页模式）---
+function prevPage() {
+    if (singlePageMode) {
+        if (currentPageIndex > 0) {
+            currentPageIndex--;
+            renderCurrentSpread();
+        }
+    }
+}
+
+// --- 导航：下一跨页（双页模式）---
+function nextSpread() {
+    if (singlePageMode) return;
+    
+    if (currentBookMode === "images") {
+        const maxSpread = Math.ceil(totalPages / 2) - 1;
+        if (currentSpread < maxSpread) {
+            currentSpread++;
+            renderCurrentSpread();
+        }
+    } else if (currentPDF) {
+        const maxSpread = Math.ceil(currentPDF.numPages / 2) - 1;
+        if (currentSpread < maxSpread) {
+            currentSpread++;
+            renderCurrentSpread();
+        }
+    }
+}
+
+// --- 导航：上一跨页（双页模式）---
+function prevSpread() {
+    if (singlePageMode) return;
+    
+    if (currentSpread > 0) {
+        currentSpread--;
+        renderCurrentSpread();
+    }
+}
+
+// --- 从图片加载书籍 ---
 async function loadBookFromImages(title, imageBasePath) {
     try {
         console.log(`加载图片书籍: ${title}, 路径: ${imageBasePath}`);
         
-        // 显示加载状态
         const ctxLeft = leftCanvas.getContext('2d');
         leftCanvas.width = 400;
         leftCanvas.height = 500;
@@ -201,10 +283,9 @@ async function loadBookFromImages(title, imageBasePath) {
         ctxLeft.font = '18px sans-serif';
         ctxLeft.fillText('加载图片中...', 20, 100);
         
-        // 检测总页数（尝试加载第一页，如果存在则继续）
-        let pageNum = 1;
+        // 检测总页数
         let foundPages = 0;
-        const maxPagesToCheck = 200; // 最多检查200页
+        const maxPagesToCheck = 200;
         
         for (let i = 1; i <= maxPagesToCheck; i++) {
             const testImg = new Image();
@@ -229,7 +310,12 @@ async function loadBookFromImages(title, imageBasePath) {
         currentBookMode = "images";
         bookImageBasePath = imageBasePath;
         currentBookTitle = title;
-        currentSpread = 0;
+        
+        if (singlePageMode) {
+            currentPageIndex = 0;
+        } else {
+            currentSpread = 0;
+        }
         
         modalTitle.innerText = title;
         await renderCurrentSpread();
@@ -237,7 +323,7 @@ async function loadBookFromImages(title, imageBasePath) {
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
         
-        console.log(`图片书籍加载成功！共 ${totalPages} 页`);
+        console.log(`✅ 图片书籍加载成功！共 ${totalPages} 页，模式: ${singlePageMode ? "单页" : "双页"}`);
         
     } catch (error) {
         console.error("图片加载错误:", error);
@@ -245,7 +331,7 @@ async function loadBookFromImages(title, imageBasePath) {
     }
 }
 
-// 从PDF加载书籍（原有逻辑）
+// --- 从PDF加载书籍 ---
 async function loadBookFromPDF(pdfPath, title) {
     try {
         console.log(`尝试加载PDF: ${pdfPath}`);
@@ -268,7 +354,12 @@ async function loadBookFromPDF(pdfPath, title) {
         currentPDF = await loadingTask.promise;
         currentBookMode = "pdf";
         currentBookTitle = title;
-        currentSpread = 0;
+        
+        if (singlePageMode) {
+            currentPageIndex = 0;
+        } else {
+            currentSpread = 0;
+        }
         
         modalTitle.innerText = title;
         await renderCurrentSpread();
@@ -276,42 +367,29 @@ async function loadBookFromPDF(pdfPath, title) {
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
         
-        console.log("PDF加载成功！");
+        console.log(`✅ PDF加载成功！共 ${currentPDF.numPages} 页，模式: ${singlePageMode ? "单页" : "双页"}`);
         
     } catch (error) {
         console.error("PDF加载错误:", error);
         let errorMsg = `无法加载 "${title}"。\n\n`;
-        errorMsg += `如果是手机端，PDF.js可能不兼容。\n`;
-        errorMsg += `建议将PDF转为JPG图片后重新尝试。\n\n`;
+        if (isMobileDevice) {
+            errorMsg += `📱 手机端建议将PDF转为JPG图片。\n\n`;
+        }
         errorMsg += `错误详情: ${error.message}`;
         alert(errorMsg);
     }
 }
 
-// --- 导航函数 ---
-function nextSpread() {
-    if (currentBookMode === "images") {
-        const maxSpread = Math.ceil(totalPages / 2) - 1;
-        if (currentSpread < maxSpread) {
-            currentSpread++;
-            renderCurrentSpread();
-        }
-    } else if (currentPDF) {
-        const maxSpread = Math.ceil(currentPDF.numPages / 2) - 1;
-        if (currentSpread < maxSpread) {
-            currentSpread++;
-            renderCurrentSpread();
-        }
+// --- 主加载函数 ---
+async function loadBook(pdfPath, title, imageFolderBase = null) {
+    if (imageFolderBase) {
+        await loadBookFromImages(title, imageFolderBase);
+    } else {
+        await loadBookFromPDF(pdfPath, title);
     }
 }
 
-function prevSpread() {
-    if (currentSpread > 0) {
-        currentSpread--;
-        renderCurrentSpread();
-    }
-}
-
+// --- 关闭模态框 ---
 function closeModal() {
     modal.style.display = 'none';
     document.body.style.overflow = 'auto';
@@ -319,13 +397,17 @@ function closeModal() {
     currentBookMode = "pdf";
 }
 
-// --- 绑定书籍点击事件 ---
+// ============================================
+// 事件绑定
+// ============================================
+
+// 绑定书籍点击事件
 document.querySelectorAll('.book-card').forEach(card => {
     card.addEventListener('click', () => {
         const pdfPath = card.getAttribute('data-pdf');
         const title = card.getAttribute('data-title');
         
-        // 为每本书指定图片文件夹路径（手动配置）
+        // 为每本书指定图片文件夹路径
         const imagePaths = {
             "先喝完这杯": "assets/images/book1/",
             "噩梦": "assets/images/book2/"
@@ -333,12 +415,13 @@ document.querySelectorAll('.book-card').forEach(card => {
         
         const imageBasePath = imagePaths[title];
         
+        // 重新检测设备模式
+        checkDeviceAndSetMode();
+        
         if (pdfPath) {
-            // 如果有对应的图片文件夹，就用图片模式（手机端友好）
             if (imageBasePath) {
                 loadBook(pdfPath, title, imageBasePath);
             } else {
-                // 否则尝试PDF模式
                 loadBook(pdfPath, title, null);
             }
         } else {
@@ -347,24 +430,49 @@ document.querySelectorAll('.book-card').forEach(card => {
     });
 });
 
-// Modal controls
+// 模态框控制
 closeBtn.addEventListener('click', closeModal);
-prevBtn.addEventListener('click', prevSpread);
-nextBtn.addEventListener('click', nextSpread);
 
+// 翻页按钮（根据模式调用不同函数）
+prevBtn.addEventListener('click', () => {
+    if (singlePageMode) {
+        prevPage();
+    } else {
+        prevSpread();
+    }
+});
+
+nextBtn.addEventListener('click', () => {
+    if (singlePageMode) {
+        nextPage();
+    } else {
+        nextSpread();
+    }
+});
+
+// 点击模态框外部关闭
 window.addEventListener('click', (event) => {
     if (event.target === modal) {
         closeModal();
     }
 });
 
+// 键盘控制
 window.addEventListener('keydown', (event) => {
     if (modal.style.display === 'block') {
         if (event.key === 'ArrowLeft') {
-            prevSpread();
+            if (singlePageMode) {
+                prevPage();
+            } else {
+                prevSpread();
+            }
             event.preventDefault();
         } else if (event.key === 'ArrowRight') {
-            nextSpread();
+            if (singlePageMode) {
+                nextPage();
+            } else {
+                nextSpread();
+            }
             event.preventDefault();
         } else if (event.key === 'Escape') {
             closeModal();
@@ -372,4 +480,7 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
-console.log("网站已启动！支持PDF和JPG图片两种模式。");
+// 页面加载时检测设备
+checkDeviceAndSetMode();
+
+console.log("🚀 网站已启动！手机端单页显示，电脑端双页显示。");
