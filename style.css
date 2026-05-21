@@ -380,3 +380,97 @@ button:disabled {
     .book-card { width: 150px; padding: 0.8rem; }
     .flavor-notes { font-size: 0.6rem; }
 }
+
+/* ============================================
+   四角漂浮装饰图标
+   ============================================ */
+
+/* 漂浮图标通用样式 */
+.floating-icon {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;  /* 让图标不干扰点击 */
+    animation: floatIcon 4s ease-in-out infinite;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.floating-icon:hover {
+    opacity: 1;
+}
+
+/* 四个角的位置 */
+.floating-icon-top-left {
+    top: 20px;
+    left: 20px;
+    animation-delay: 0s;
+}
+
+.floating-icon-top-right {
+    top: 20px;
+    right: 20px;
+    animation-delay: 0.5s;
+}
+
+.floating-icon-bottom-left {
+    bottom: 20px;
+    left: 20px;
+    animation-delay: 1s;
+}
+
+.floating-icon-bottom-right {
+    bottom: 20px;
+    right: 20px;
+    animation-delay: 1.5s;
+}
+
+/* 图标大小 */
+.floating-icon img {
+    width: 60px;
+    height: auto;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+/* 漂浮动画 */
+@keyframes floatIcon {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-12px) rotate(5deg);
+    }
+}
+
+/* 电脑端稍大 */
+@media (min-width: 769px) {
+    .floating-icon img {
+        width: 70px;
+    }
+}
+
+/* 手机端稍小，避免遮挡 */
+@media (max-width: 768px) {
+    .floating-icon img {
+        width: 40px;
+    }
+    
+    .floating-icon-top-left {
+        top: 10px;
+        left: 10px;
+    }
+    
+    .floating-icon-top-right {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .floating-icon-bottom-left {
+        bottom: 10px;
+        left: 10px;
+    }
+    
+    .floating-icon-bottom-right {
+        bottom: 10px;
+        right: 10px;
+    }
+}
