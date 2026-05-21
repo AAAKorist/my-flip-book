@@ -1,12 +1,9 @@
-// Import Mozilla's PDF Library
-import * as pdfjsLib from './pdf-libs/pdf.mjs';
+// MOBILE-COMPATIBLE PDF VIEWER
+// This version works on phones, tablets, and desktops
 
-// Configure the worker (required for performance)
-pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf-libs/pdf.worker.mjs';
-
-// --- Global Variables ---
-let currentPDF = null;       // The loaded PDF document
-let currentSpread = 0;       // Which spread we are on (0 = pages 1&2, 1 = pages 3&4)
+let pdfjsLib = null;
+let currentPDF = null;
+let currentSpread = 0;
 let totalSpreads = 0;
 let currentBookTitle = "";
 
@@ -20,23 +17,51 @@ const modalTitle = document.getElementById('book-title');
 const leftCanvas = document.getElementById('left-page-canvas');
 const rightCanvas = document.getElementById('right-page-canvas');
 
-// --- Helper: Render a single page onto a canvas ---
+// Load PDF.js library dynamically (works better on mobile)
+async function loadPDFLibrary() {
+    if (pdfjsLib) return pdfjsLib;
+    
+    try {
+        // Try local files first
+        const module = await import('./pdf-libs/pdf.mjs');
+        pdfjsLib = module;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf-libs/pdf.worker.mjs';
+        return pdfjsLib;
+    } catch (localError) {
+        console.log("Local PDF.js failed, trying CDN...");
+        // Fallback to CDN for mobile
+        const module = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.mjs');
+        pdfjsLib = module;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.worker.mjs';
+        return pdfjsLib;
+    }
+}
+
+// Helper: Render a single page
 async function renderPage(pdfDoc, pageNum, canvasElement) {
     try {
-        // Get the page from the PDF
         const page = await pdfDoc.getPage(pageNum);
         
-        // Calculate scale so the page fits nicely (viewport width around 400px)
+        // Get device pixel ratio for sharper rendering on mobile
+        const pixelRatio = window.devicePixelRatio || 1;
+        
+        // Calculate scale based on container width
+        const container = canvasElement.parentElement;
+        const containerWidth = container.clientWidth - 20; // Subtract padding
+        
         const viewport = page.getViewport({ scale: 1.0 });
-        const scale = Math.min(400 / viewport.width, 700 / viewport.height);
+        const scale = containerWidth / viewport.width;
         const scaledViewport = page.getViewport({ scale: scale });
         
-        // Set canvas size
-        canvasElement.width = scaledViewport.width;
-        canvasElement.height = scaledViewport.height;
+        // Set canvas dimensions
+        canvasElement.width = scaledViewport.width * pixelRatio;
+        canvasElement.height = scaledViewport.height * pixelRatio;
+        canvasElement.style.width = `${scaledViewport.width}px`;
+        canvasElement.style.height = `${scaledViewport.height}px`;
         
-        // Render PDF page into canvas context
         const context = canvasElement.getContext('2d');
+        context.scale(pixelRatio, pixelRatio);
+        
         const renderContext = {
             canvasContext: context,
             viewport: scaledViewport
@@ -46,154 +71,125 @@ async function renderPage(pdfDoc, pageNum, canvasElement) {
         return true;
     } catch (error) {
         console.error(`Error rendering page ${pageNum}:`, error);
-        // Draw an error message on canvas
-        const ctx = canvasElement.getContext('2d');
-        canvasElement.width = 400;
-        canvasElement.height = 500;
-        ctx.fillStyle = '#f0f0f0';
-        ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-        ctx.fillStyle = '#a00';
-        ctx.font = '16px sans-serif';
-        ctx.fillText('Could not load page', 20, 50);
+        showErrorOnCanvas(canvasElement, `Page ${pageNum} failed to load`);
         return false;
     }
 }
 
-// --- Render the current spread (two facing pages) ---
+// Show error message on canvas
+function showErrorOnCanvas(canvasElement, message) {
+    const ctx = canvasElement.getContext('2d');
+    canvasElement.width = 400;
+    canvasElement.height = 500;
+    canvasElement.style.width = '400px';
+    canvasElement.style.height = '500px';
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+    ctx.fillStyle = '#cc0000';
+    ctx.font = '14px sans-serif';
+    ctx.fillText(message, 20, canvasElement.height / 2);
+}
+
+// Render current spread
 async function renderCurrentSpread() {
     if (!currentPDF) return;
     
-    // Calculate actual page numbers for this spread
-    // Spread 0: Left=Page 1, Right=Page 2
-    // Spread 1: Left=Page 3, Right=Page 4
     const leftPageNum = (currentSpread * 2) + 1;
     const rightPageNum = leftPageNum + 1;
-    
-    // Get total pages in PDF
     const totalPages = currentPDF.numPages;
     
-    // Update button states
+    // Update buttons
     prevBtn.disabled = (currentSpread === 0);
     nextBtn.disabled = (rightPageNum > totalPages);
     
-    // Update page info display
+    // Update info text
     if (rightPageNum <= totalPages) {
-        pageInfoSpan.innerText = `Pages ${leftPageNum} - ${rightPageNum} of ${totalPages}`;
+        pageInfoSpan.innerText = `Pages ${leftPageNum}-${rightPageNum} of ${totalPages}`;
     } else if (leftPageNum <= totalPages) {
-        pageInfoSpan.innerText = `Page ${leftPageNum} of ${totalPages} (single page)`;
+        pageInfoSpan.innerText = `Page ${leftPageNum} of ${totalPages}`;
     } else {
         pageInfoSpan.innerText = `End of book`;
     }
     
-    // Render Left Page
+    // Render left page
     if (leftPageNum <= totalPages) {
         await renderPage(currentPDF, leftPageNum, leftCanvas);
     } else {
-        // Blank canvas
-        const ctx = leftCanvas.getContext('2d');
-        leftCanvas.width = 400;
-        leftCanvas.height = 500;
-        ctx.fillStyle = '#eae6df';
-        ctx.fillRect(0, 0, leftCanvas.width, leftCanvas.height);
-        ctx.fillStyle = '#999';
-        ctx.font = 'italic 18px serif';
-        ctx.fillText('End', leftCanvas.width/2 - 20, leftCanvas.height/2);
+        showErrorOnCanvas(leftCanvas, "End");
     }
     
-    // Render Right Page
+    // Render right page
     if (rightPageNum <= totalPages) {
         await renderPage(currentPDF, rightPageNum, rightCanvas);
+    } else if (leftPageNum <= totalPages) {
+        showErrorOnCanvas(rightCanvas, "The End");
     } else {
-        const ctx = rightCanvas.getContext('2d');
-        rightCanvas.width = 400;
-        rightCanvas.height = 500;
-        ctx.fillStyle = '#eae6df';
-        ctx.fillRect(0, 0, rightCanvas.width, rightCanvas.height);
-        ctx.fillStyle = '#999';
-        ctx.font = 'italic 18px serif';
-        ctx.fillText('The End', rightCanvas.width/2 - 40, rightCanvas.height/2);
+        showErrorOnCanvas(rightCanvas, "");
     }
 }
 
-// --- Load a PDF when user clicks a book cover ---
-// --- Load a PDF when user clicks a book cover (WITH DEBUGGING) ---
+// Load book (mobile-optimized)
 async function loadBook(pdfPath, title) {
     try {
-        console.log(`Attempting to load: ${pdfPath}`);
+        console.log(`Loading book: ${title} from ${pdfPath}`);
         
-        // Show loading state on canvas
-        const ctxLeft = leftCanvas.getContext('2d');
-        leftCanvas.width = 400;
-        leftCanvas.height = 500;
-        ctxLeft.fillStyle = '#dddddd';
-        ctxLeft.fillRect(0, 0, leftCanvas.width, leftCanvas.height);
-        ctxLeft.fillStyle = '#333';
-        ctxLeft.font = '18px sans-serif';
-        ctxLeft.fillText('Loading PDF...', 20, 100);
-        ctxLeft.fillText(`Path: ${pdfPath}`, 20, 140);
+        // Show loading state
+        showErrorOnCanvas(leftCanvas, "Loading PDF...");
+        showErrorOnCanvas(rightCanvas, "Please wait");
         
-        // Try to fetch the file first (debugging step)
-        console.log("Testing if file exists...");
-        const testResponse = await fetch(pdfPath);
-        console.log("Fetch response status:", testResponse.status);
+        // Load PDF.js library first
+        const PDFLib = await loadPDFLibrary();
         
-        if (!testResponse.ok) {
-            throw new Error(`File not found (HTTP ${testResponse.status}). Path: ${pdfPath}`);
-        }
+        // Fetch the PDF with proper options for mobile
+        const loadingTask = PDFLib.getDocument({
+            url: pdfPath,
+            withCredentials: false,
+            useSystemFonts: true,
+            disableRange: true,  // Helps on mobile
+            disableStream: true,  // Helps on mobile
+            disableAutoFetch: false,
+            cMapUrl: null
+        });
         
-        console.log("File exists! Now loading with PDF.js...");
-        
-        // Load the PDF document
-        const loadingTask = pdfjsLib.getDocument(pdfPath);
         currentPDF = await loadingTask.promise;
         currentBookTitle = title;
         currentSpread = 0;
+        totalSpreads = Math.ceil(currentPDF.numPages / 2);
         
-        // Calculate total spreads
-        const totalPages = currentPDF.numPages;
-        totalSpreads = Math.ceil(totalPages / 2);
-        
-        // Update modal title
         modalTitle.innerText = title;
-        
-        // Render first spread
         await renderCurrentSpread();
         
-        // Show the modal
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
         
-        console.log("PDF loaded successfully!");
-        
+        console.log("Book loaded successfully!");
     } catch (error) {
-        console.error("Full error details:", error);
+        console.error("Failed to load book:", error);
         
-        // Show a more helpful error message
         let errorMsg = `Could not load "${title}".\n\n`;
         
-        if (error.message.includes("File not found") || error.message.includes("404")) {
+        if (error.message.includes("Worker") || error.message.includes("worker")) {
+            errorMsg += `⚠️ Mobile worker error.\n\nTry these fixes:\n`;
+            errorMsg += `1. Refresh the page and try again\n`;
+            errorMsg += `2. Clear your browser cache\n`;
+            errorMsg += `3. Use Chrome or Safari browser\n`;
+            errorMsg += `4. Check your internet connection`;
+        } else if (error.message.includes("404")) {
             errorMsg += `❌ PDF file missing at: ${pdfPath}\n\n`;
-            errorMsg += `Solutions:\n`;
-            errorMsg += `1. Make sure the file exists in your 'assets/pdfs/' folder\n`;
-            errorMsg += `2. Check that the filename matches exactly (case-sensitive)\n`;
-            errorMsg += `3. In VSCode, right-click the pdfs folder → Reveal in File Explorer\n`;
-        } else if (error.message.includes("CORS")) {
-            errorMsg += `❌ CORS error. Make sure you're using Live Server (not double-clicking the HTML file).\n`;
+            errorMsg += `Make sure the file exists on the server.`;
         } else {
             errorMsg += `❌ ${error.message}\n\n`;
-            errorMsg += `Try using a different PDF file from: https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`;
+            errorMsg += `Try using the test PDF from:\nhttps://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`;
         }
         
         alert(errorMsg);
     }
 }
 
-// --- Navigation Functions ---
+// Navigation functions
 function nextSpread() {
     if (!currentPDF) return;
-    const totalPages = currentPDF.numPages;
-    const maxSpread = Math.ceil(totalPages / 2) - 1;
-    
+    const maxSpread = Math.ceil(currentPDF.numPages / 2) - 1;
     if (currentSpread < maxSpread) {
         currentSpread++;
         renderCurrentSpread();
@@ -207,17 +203,16 @@ function prevSpread() {
     }
 }
 
-// --- Close Modal ---
 function closeModal() {
     modal.style.display = 'none';
     document.body.style.overflow = 'auto';
-    currentPDF = null; // Clear memory
+    currentPDF = null;
 }
 
-// --- Event Listeners ---
-// Attach click handlers to all book cards
+// Event listeners
 document.querySelectorAll('.book-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+        e.preventDefault();
         const pdfPath = card.getAttribute('data-pdf');
         const title = card.getAttribute('data-title');
         if (pdfPath) {
@@ -228,19 +223,15 @@ document.querySelectorAll('.book-card').forEach(card => {
     });
 });
 
-// Modal controls
 closeBtn.addEventListener('click', closeModal);
 prevBtn.addEventListener('click', prevSpread);
 nextBtn.addEventListener('click', nextSpread);
 
-// Close modal when clicking outside the content
 window.addEventListener('click', (event) => {
-    if (event.target === modal) {
-        closeModal();
-    }
+    if (event.target === modal) closeModal();
 });
 
-// Keyboard controls (Arrow keys)
+// Touch-friendly keyboard support
 window.addEventListener('keydown', (event) => {
     if (modal.style.display === 'block') {
         if (event.key === 'ArrowLeft') {
@@ -255,4 +246,4 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
-console.log("Website ready! Click on any book cover to read in two-page spreads.");
+console.log("Mobile-optimized reader ready!");
