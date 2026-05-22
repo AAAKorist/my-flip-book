@@ -451,26 +451,26 @@ button:disabled {
 /* 手机端稍小，避免遮挡 */
 @media (max-width: 768px) {
     .floating-icon img {
-        width: 80px;
+        width: 60px;
     }
     
     .floating-icon-top-left {
-        top: 50px;
-        left: 50px;
+        top: 40px;
+        left: 40px;
     }
     
     .floating-icon-top-right {
-        top: 50px;
-        right: 50px;
+        top: 4%;
+        right: 40px;
     }
     
     .floating-icon-bottom-left {
-        bottom: 50px;
-        left: 50px;
+        bottom: 40px;
+        left: 40px;
     }
     
     .floating-icon-bottom-right {
-        bottom: 50px;
-        right: 50px;
+        bottom: 40px;
+        right: 40px;
     }
 }
